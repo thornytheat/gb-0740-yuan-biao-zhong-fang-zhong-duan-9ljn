@@ -13,4 +13,17 @@
 
 `POST /api/plans` 接收 `{"sample":"clean"}` 或表单的 `bundle` JSON 文件。模块及字段说明见 [深度登记](docs/DEPTH.md) 和 [数据字典](docs/DATA-DICTIONARY.md)。
 
+## 交接租约（M8）
+
+夜班交接时，多个值班组可能同时重放同一段依赖链，已失效的旧执行者也可能继续提交。交接租约把“持有边界”和“落库凭据”固定下来：
+
+- **持有边界按依赖分量**：有依赖路径相连的数据集（含跨日滞后边）必须同属一份租约；闭包内任一分区已被活动租约持有即拒绝，避免相互依赖的分区拆给不同人。互不相连的分量可并行持有，无关分区不必排队。
+- **fencing 令牌守卫派发、写入与回滚**：令牌由库内单调序列签发。交接在同一事务内作废旧租约并签发更高令牌的新租约，旧执行者持旧令牌提交会被 `STALE_FENCING_TOKEN` / `LEASE_EXPIRED` 拒绝，无法落库。
+- **请求幂等**：同一幂等键重试复用既有请求，不新增第二份。
+- **交接失败可追踪**：交接单只追加、标记 `rejected`/`expired` 而不删除，旧租约保持活动、旧范围仍在单据中。
+- **证据只追加**：放行依据按内容哈希存储，无更新/删除接口；原始依据误删后写入会被拒，仍可凭留存证据复核当时为何放行。
+- **页面只读**：`/console/lease` 只展示租约、责任范围与等待范围，不做权限管理和批量运营。
+
+接口：`POST /api/lease/acquire` 获取租约；`POST /api/lease/handoffs` 与 `…/complete`、`…/reject` 两阶段交接；`POST /api/lease/requests` 登记请求（支持 `idempotency_key` 与 `evidence`）；`…/dispatch`、`…/write`、`…/rollback` 携带 `lease_id` 与 `token` 执行；`GET /api/lease/dashboard` 与 `GET /api/lease/evidence/<hash>` 只读复核。
+
 运行 `docker compose exec -T app pytest -q` 复核。`docker compose down` 停止应用并保留批次历史。

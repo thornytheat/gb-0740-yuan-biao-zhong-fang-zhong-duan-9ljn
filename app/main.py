@@ -5,6 +5,8 @@ from app.keys import ReplayError
 from app.modules import VIEWS, register
 from app.modules.m7_release.service import execute
 from app.modules.m7_release.store import Catalog
+from app.modules.m8_lease.handler import datasets_from_payload
+from app.modules.m8_lease.store import LeaseStore
 from app.web import fixture, record, repository
 from flask import Flask, abort, jsonify, render_template, request, url_for
 
@@ -13,6 +15,7 @@ def create_app(options=None):
     app = Flask(__name__)
     app.config.update(
         DB=os.environ.get("REPLAY_DB", ROOT / "instance" / "replay.sqlite3"),
+        LEASE_DB=os.environ.get("LEASE_DB", ROOT / "instance" / "lease.sqlite3"),
         INPUTS=ROOT / "sample_data",
         MAX_CONTENT_LENGTH=MAX_BYTES + 32000,
     )
@@ -21,6 +24,7 @@ def create_app(options=None):
     app.json.ensure_ascii = False
     app.json.sort_keys = False
     app.extensions["plans"] = Catalog(app.config["DB"])
+    app.extensions["leases"] = LeaseStore(app.config["LEASE_DB"])
     register(app)
 
     @app.get("/health")
@@ -38,6 +42,13 @@ def create_app(options=None):
     @app.get("/")
     @app.get("/console/<section>")
     def console(section="schedule"):
+        if section == "lease":
+            from app.modules.m8_lease.service import LeaseService
+
+            board = LeaseService(app.extensions["leases"]).dashboard(datasets_from_payload(None))
+            return render_template(
+                "lease.html", views=VIEWS, active="lease", inputs=SAMPLES, board=board
+            )
         if section not in VIEWS:
             abort(404)
         key = request.args.get("plan")

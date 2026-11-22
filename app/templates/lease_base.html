@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ views[active][0] }} / 源表重放</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='terminal.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='print.css') }}">
+</head>
+<body>
+  <aside class="rail"><a href="/console/lease" class="brand"><span aria-hidden="true">&gt;_</span> 源表重放</a>
+    <nav aria-label="回填核查">{% for name,info in views.items() %}<a href="{{ url_for('console',section=name) }}" {% if active==name %}aria-current="page"{% endif %}>{{ info[0] }}</a>{% endfor %}</nav>
+    <span class="rail-tail">replay / lease</span>
+  </aside>
+  <div class="main-shell">
+    <header><h1>{{ views[active][0] }}</h1><a href="{{ url_for('lease.dashboard') }}">租约 JSON</a></header>
+    <main>
+      {% block section %}{% endblock %}
+    </main>
+    <footer><code>fencing tokens monotonic · evidence append-only</code><span>页面只读，不做权限与批量运营</span></footer>
+  </div>
+</body>
+</html>

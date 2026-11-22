@@ -57,6 +57,12 @@ td, th { padding: 3px 12px; text-align: left; border-bottom: 1px solid var(--rul
 th { position: sticky; top: 0; background: var(--panel-light); color: var(--dim); }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .empty { padding: 0 13px; color: var(--dim); }
+.lease-note { padding: 10px 13px; color: var(--dim); line-height: 1.7; }
+.lease-note code { color: var(--warn); }
+.state-badge { display: inline-block; padding: 1px 8px; border: 1px solid var(--rule-bright); color: var(--warn); white-space: nowrap; }
+.state-badge[data-state="active"], .state-badge[data-state="written"], .state-badge[data-state="write"], .state-badge[data-state="completed"] { color: var(--success); border-color: var(--success); }
+.state-badge[data-state="handed_over"], .state-badge[data-state="expired"], .state-badge[data-state="rejected"], .state-badge[data-state="rollback"], .state-badge[data-state="failed"] { color: var(--error); border-color: var(--error); }
+.state-badge[data-state="waiting"], .state-badge[data-state="dispatched"], .state-badge[data-state="rolled_back"], .state-badge[data-state="pending"] { color: var(--accent); }
 footer { padding: 7px var(--pad); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; position: sticky; bottom: 0; margin-top: auto; border-top: 1px solid var(--rule); background: var(--bg); color: var(--dim); font-size: 11px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (max-width:790px) { .command { display: block; } .shortcut { display: none; } .kpis { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 5px; } .kpis span { padding: 0; border: 0; } }

@@ -1,0 +1,147 @@
+{% extends 'lease_base.html' %}
+{% block section %}
+<section class="panel output">
+  <h2>$ replay lease --handoff <small>只展示租约与等待范围，变更须走受控 API</small></h2>
+  <div class="lease-note">
+    派发、写入和回滚都依据租约的 fencing 令牌；交接后旧租约立即失效，
+    旧执行者继续提交会被 <code>STALE_FENCING_TOKEN</code> 拒绝，无法落库。
+    证据只追加，原始依据误删后仍可凭摘要复核当时为何放行。
+  </div>
+</section>
+
+<section class="panel output">
+  <h2>依赖分量（持有边界） <small>{{ board['分量图']|length }} 个</small></h2>
+  <div class="scroll" tabindex="0" aria-label="依赖分量">
+    <table>
+      <thead><tr><th scope="col">分量</th><th scope="col">同链数据集（必须同属一份租约）</th></tr></thead>
+      <tbody>
+      {% for cluster in board['分量图'] %}
+        <tr><td>{{ cluster['分量'] }}</td><td>{{ cluster['数据集']|join('、') }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel output">
+  <h2>当前租约与责任范围 <small>{{ board['租约列表']|length }} 份</small></h2>
+  {% if board['租约列表'] %}
+  <div class="scroll" tabindex="0" aria-label="租约列表">
+    <table>
+      <thead><tr>
+        {% for col in ['租约','fencing令牌','值班组','持有者','状态','责任范围','范围大小','前序租约','创建时间','到期时间','备注'] %}
+        <th scope="col">{{ col }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+      {% for lease in board['租约列表'] %}
+        <tr>
+          <td><code>{{ lease['租约'] }}</code></td>
+          <td class="num"><strong>{{ lease['fencing令牌'] }}</strong></td>
+          <td>{{ lease['值班组'] }}</td>
+          <td>{{ lease['持有者'] }}</td>
+          <td><span class="state-badge" data-state="{{ lease['状态'] }}">{{ lease['状态'] }}</span></td>
+          <td>{{ lease['责任范围']|join('、') }}</td>
+          <td class="num">{{ lease['范围大小'] }}</td>
+          <td>{% if lease['前序租约'] %}<code>{{ lease['前序租约'] }}</code>{% else %}—{% endif %}</td>
+          <td>{{ lease['创建时间'] }}</td>
+          <td>{{ lease['到期时间'] }}</td>
+          <td>{{ lease['备注'] or '—' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="empty">尚无租约。通过 <code>POST /api/lease/acquire</code> 获取。</p>{% endif %}
+</section>
+
+<section class="panel output">
+  <h2>等待中的请求 <small>{{ board['等待范围']|length }} 条</small></h2>
+  {% if board['等待范围'] %}
+  <div class="scroll" tabindex="0" aria-label="等待范围">
+    <table>
+      <thead><tr>
+        {% for col in ['请求','分区','目标版本','当前版本','状态','持有组','fencing令牌','归属租约','证据摘要','创建时间','明细'] %}
+        <th scope="col">{{ col }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+      {% for req in board['等待范围'] %}
+        <tr>
+          <td><code>{{ req['请求'] }}</code></td>
+          <td>{{ req['分区'] }}</td>
+          <td>{{ req['目标版本'] }}</td>
+          <td>{{ req['当前版本'] or '—' }}</td>
+          <td><span class="state-badge" data-state="{{ req['状态'] }}">{{ req['状态'] }}</span></td>
+          <td>{{ req['持有组'] or '未持有' }}</td>
+          <td class="num">{{ req['fencing令牌'] if req['fencing令牌'] is not none else '—' }}</td>
+          <td>{% if req['归属租约'] %}<code>{{ req['归属租约'] }}</code>{% else %}—{% endif %}</td>
+          <td>{% if req['证据摘要'] %}<a href="{{ url_for('lease.evidence', evidence_hash=req['证据摘要']) }}"><code>{{ req['证据摘要'][:12] }}…</code></a>{% else %}—{% endif %}</td>
+          <td>{{ req['创建时间'] }}</td>
+          <td>{{ req['明细'] or '—' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="empty">没有等待或派发中的请求。</p>{% endif %}
+</section>
+
+<section class="panel output">
+  <h2>交接单 <small>{{ board['交接单']|length }} 张</small></h2>
+  {% if board['交接单'] %}
+  <div class="scroll" tabindex="0" aria-label="交接单">
+    <table>
+      <thead><tr>
+        {% for col in ['交接单','交出组','接手组','状态','源租约','新租约','交接范围','创建时间','完成时间','说明'] %}
+        <th scope="col">{{ col }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+      {% for ho in board['交接单'] %}
+        <tr>
+          <td><code>{{ ho['交接单'] }}</code></td>
+          <td>{{ ho['交出组'] }}</td>
+          <td>{{ ho['接手组'] }}</td>
+          <td><span class="state-badge" data-state="{{ ho['状态'] }}">{{ ho['状态'] }}</span></td>
+          <td><code>{{ ho['源租约'] }}</code></td>
+          <td>{% if ho['新租约'] %}<code>{{ ho['新租约'] }}</code>{% else %}—{% endif %}</td>
+          <td>{{ ho['交接范围']|join('、') }}</td>
+          <td>{{ ho['创建时间'] }}</td>
+          <td>{{ ho['完成时间'] or '—' }}</td>
+          <td>{{ ho['说明'] or '—' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="empty">尚未发起交接。</p>{% endif %}
+</section>
+
+<section class="panel output">
+  <h2>写入 / 回滚落库事件 <small>{{ board['写事件']|length }} 条</small></h2>
+  {% if board['写事件'] %}
+  <div class="scroll" tabindex="0" aria-label="写事件">
+    <table>
+      <thead><tr>
+        {% for col in ['event_id','kind','partition','version','previous_version','lease_id','token','request_id','created_at','detail'] %}
+        <th scope="col">{{ col }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+      {% for evt in board['写事件'] %}
+        <tr>
+          <td><code>{{ evt['event_id'] }}</code></td>
+          <td><span class="state-badge" data-state="{{ evt['kind'] }}">{{ evt['kind'] }}</span></td>
+          <td>{{ evt['partition'] }}</td>
+          <td>{{ evt['version'] or '—' }}</td>
+          <td>{{ evt['previous_version'] or '—' }}</td>
+          <td><code>{{ evt['lease_id'] }}</code></td>
+          <td class="num">{{ evt['token'] }}</td>
+          <td><code>{{ evt['request_id'] }}</code></td>
+          <td>{{ evt['created_at'] }}</td>
+          <td>{{ evt['detail'] or '—' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="empty">尚无落库事件。</p>{% endif %}
+</section>
+{% endblock %}

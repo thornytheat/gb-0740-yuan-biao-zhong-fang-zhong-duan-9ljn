@@ -14,6 +14,7 @@
 | M5 回滚校验 | 核对写入前后与恢复哈希 | `GET /api/rollback/{id}` | `app/modules/m5_rollback/service.py` | `tests/test_rollback.py` |
 | M6 行数勾稽 | 守恒比较影响分区、源记录和行数 | `GET /api/reconcile/{id}` | `app/modules/m6_reconcile/service.py` | `tests/test_reconcile.py` |
 | M7 版本签发 | 在近期计划中复用并下载清单 | `GET /api/release/{id}` | `app/modules/m7_release/service.py` | `tests/test_release.py` |
+| M8 交接租约 | 按依赖分量持有、fencing 守卫派发/写入/回滚与两阶段交接 | `GET /api/lease/dashboard` | `app/modules/m8_lease/service.py` | `tests/test_lease.py` |
 
 ## 陷阱登记
 
@@ -29,6 +30,12 @@
 | TRAP-20 | clean.json 添加回边 | 排序丢结点或死循环 | 深度优先检测访问栈 | `app/modules/m2_graph/service.py` | `tests/test_graph.py::test_cycle_path_from_sample` |
 | TRAP-23 | nightly.json 截点紧邻滞后一日 | 越界写入 | 分区日显式切界 | `app/modules/m4_schedule/expansion.py` | `tests/test_schedule.py::test_cutoff_included_but_lagged_next_day_excluded` |
 | TRAP-26 | 演练前计划引用旧指针 | 覆盖新版本 | 检查所有写入前置值 | `app/modules/m5_rollback/service.py` | `tests/test_rollback.py::test_stale_snapshot_atomic` |
+| TRAP-30 | 两个值班组同时重放同一依赖链 | 相互依赖的分区拆给不同持有者，旧执行者继续写入 | 以无向连通分量为持有边界，闭包内冲突整组拒绝，互不相连分量可并行 | `app/modules/m8_lease/graph.py` | `tests/test_lease.py::TestAcquire` |
+| TRAP-31 | 交接后旧执行者仍持旧令牌提交 | 旧令牌写入成功、数据错乱 | 库内单调 fencing token，交接即作废旧租约，守卫拒绝旧令牌落库 | `app/modules/m8_lease/service.py` | `tests/test_lease.py::TestFencing::test_old_executor_blocked_after_handoff` |
+| TRAP-32 | 同一请求重试产生第二份 | 重复派发、重复落库 | 幂等键唯一约束，重试复用先到请求，不新增 | `app/modules/m8_lease/service.py` | `tests/test_lease.py::TestRequests::test_retry_same_idempotency_key_does_not_duplicate` |
+| TRAP-33 | 交接失败后旧范围失联 | 单据被删、无法追踪 | 交接单只标记 rejected/expired 不删除，旧租约保持活动并保留范围 | `app/modules/m8_lease/service.py` | `tests/test_lease.py::TestHandoff::test_rejected_handoff_keeps_old_lease_and_audit_trail` |
+| TRAP-34 | 放行的原始依据被误删 | 无法复核当时为何放行 | 证据按内容哈希只追加存储，写入前必须能取到证据，缺失即拒绝 | `app/modules/m8_lease/service.py` | `tests/test_lease.py::TestEvidence` |
+| TRAP-35 | 到期状态随拒绝事务回滚 | 租约表面仍活动、可再用 | 写事务前用独立连接先落库到期标记，再在主事务守卫拒绝 | `app/modules/m8_lease/service.py` | `tests/test_lease.py::TestExpiry` |
 
 ## 已知边界
 
